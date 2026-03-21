@@ -11,8 +11,19 @@ config_version=5
 [application]
 
 config/name="Vanpiresuv"
+run/main_scene="res://world.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+InputSetup="*res://input_setup.gd"
+
+[display]
+
+window/size/viewport_width=854
+window/size/viewport_height=480
+window/stretch/mode="canvas_items"
 
 [physics]
 
