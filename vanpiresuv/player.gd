@@ -154,10 +154,11 @@ func die() -> void:
 	var effect_script := load("res://death_effect.gd")
 	var effect := Node2D.new()
 	effect.set_script(effect_script)
+	effect.set_meta("player_death", true)
 	effect.setup(global_position, "DEAD")
 	get_tree().current_scene.add_child(effect)
 	visible = false
-	get_tree().create_timer(1.0).timeout.connect(_show_game_over)
+	get_tree().create_timer(2.5).timeout.connect(_show_game_over)
 
 
 func _show_game_over() -> void:

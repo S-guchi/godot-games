@@ -13,11 +13,14 @@ var score_text := ""
 var score_alpha := 1.0
 var score_offset := 0.0
 var is_boss := false
+var is_player_death := false
 
 
 func _ready() -> void:
 	if has_meta("boss"):
 		is_boss = true
+	if has_meta("player_death"):
+		is_player_death = true
 	flash_timer = FLASH_DURATION
 
 	if is_boss:
@@ -28,15 +31,22 @@ func _ready() -> void:
 	_apply_screen_shake()
 	_apply_camera_zoom()
 
-	# Hit stop
-	var freeze_time := 0.15 if is_boss else 0.04
+	# Hit stop - longer for dramatic deaths
+	var freeze_time := 0.04
+	if is_player_death:
+		freeze_time = 0.4
+	elif is_boss:
+		freeze_time = 0.15
 	get_tree().paused = true
 	get_tree().create_timer(freeze_time, true, false, true).timeout.connect(_unfreeze)
 
-	# Slow motion after boss kill
+	# Slow motion after dramatic kills
 	if is_boss:
 		Engine.time_scale = 0.2
 		get_tree().create_timer(1.0, true, false, true).timeout.connect(func(): Engine.time_scale = 1.0)
+	elif is_player_death:
+		Engine.time_scale = 0.15
+		get_tree().create_timer(1.5, true, false, true).timeout.connect(func(): Engine.time_scale = 1.0)
 
 	get_tree().create_timer(2.0).timeout.connect(queue_free)
 
@@ -148,8 +158,14 @@ func _apply_screen_shake() -> void:
 	var cam := get_viewport().get_camera_2d()
 	if cam:
 		var tw := create_tween()
-		var shake_strength := 20.0 if is_boss else 6.0
-		var shake_count := 12 if is_boss else 6
+		var shake_strength := 6.0
+		var shake_count := 6
+		if is_player_death:
+			shake_strength = 25.0
+			shake_count = 16
+		elif is_boss:
+			shake_strength = 20.0
+			shake_count = 12
 		for j in shake_count:
 			var offset := Vector2(randf_range(-shake_strength, shake_strength), randf_range(-shake_strength, shake_strength))
 			tw.tween_property(cam, "offset", offset, 0.03)
@@ -161,7 +177,10 @@ func _apply_camera_zoom() -> void:
 	var cam := get_viewport().get_camera_2d()
 	if cam:
 		var tw := create_tween()
-		if is_boss:
+		if is_player_death:
+			tw.tween_property(cam, "zoom", Vector2(2.0, 2.0), 0.08)
+			tw.tween_property(cam, "zoom", Vector2(1.2, 1.2), 0.6).set_ease(Tween.EASE_OUT)
+		elif is_boss:
 			tw.tween_property(cam, "zoom", Vector2(1.7, 1.7), 0.05)
 			tw.tween_property(cam, "zoom", Vector2(1.3, 1.3), 0.3)
 			tw.tween_property(cam, "zoom", Vector2(1.5, 1.5), 0.2)
