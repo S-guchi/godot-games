@@ -1,3 +1,13 @@
 # Godot 4+ specific ignores
 .godot/
+*.uid
 /android/
+
+# AI開発環境用
+.tmp-godot-data/
+.tmp-godot-config/
+.tmp-godot-cache/
+build/
+logs/*.log
+
+images/
