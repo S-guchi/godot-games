@@ -100,7 +100,7 @@ func take_damage(amount: int) -> void:
 			tw.tween_property(cam, "zoom", Vector2(1.5, 1.5), 0.1)
 
 	if hp <= 0:
-		die()
+		call_deferred("die")
 
 
 func die() -> void:

@@ -66,9 +66,8 @@ func _on_body_entered(body: Node2D) -> void:
 
 		if hits_remaining > 0:
 			hits_remaining -= 1
-			# Continue through enemy
 		else:
-			queue_free()
+			call_deferred("queue_free")
 
 
 func _spawn_hit_spark() -> void:
