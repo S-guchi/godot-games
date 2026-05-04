@@ -56,6 +56,7 @@ var hud_label: Label
 var hint_label: Label
 var message_label: Label
 var action_box: VBoxContainer
+var action_scroll: ScrollContainer
 var relic_label: Label
 var map_panel: PanelContainer
 var map_layer: Control
@@ -147,8 +148,8 @@ func _build_scene() -> void:
 	hero_sprite.centered = true
 	hero_sprite.region_enabled = true
 	hero_sprite.region_rect = CHARACTER_REGIONS.hero
-	hero_sprite.position = Vector2(270, 653)
-	hero_sprite.scale = Vector2(0.31, 0.31)
+	hero_sprite.position = Vector2(270, 592)
+	hero_sprite.scale = Vector2(0.24, 0.24)
 	world.add_child(hero_sprite)
 
 	_build_ui()
@@ -234,9 +235,15 @@ func _build_ui() -> void:
 	inventory_label.add_theme_color_override("font_color", Color(0.78, 0.9, 0.72))
 	bottom_stack.add_child(inventory_label)
 
+	action_scroll = ScrollContainer.new()
+	action_scroll.custom_minimum_size = Vector2(0, 132)
+	action_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	bottom_stack.add_child(action_scroll)
+
 	action_box = VBoxContainer.new()
+	action_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	action_box.add_theme_constant_override("separation", 7)
-	bottom_stack.add_child(action_box)
+	action_scroll.add_child(action_box)
 
 	relic_label = Label.new()
 	relic_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
@@ -281,12 +288,12 @@ func _update_sprites() -> void:
 		if OBJECT_REGIONS.has(game.visible_object):
 			event_sprite.texture = object_texture
 			event_sprite.region_rect = OBJECT_REGIONS[game.visible_object]
-			event_sprite.scale = Vector2(0.44, 0.44) if game.visible_object != "coin" else Vector2(0.32, 0.32)
+			event_sprite.scale = _object_display_scale(game.visible_object)
 			event_sprite.visible = true
 		elif MAP_ICON_REGIONS.has(game.visible_object):
 			event_sprite.texture = map_icon_texture
 			event_sprite.region_rect = MAP_ICON_REGIONS[game.visible_object]
-			event_sprite.scale = Vector2(0.34, 0.34)
+			event_sprite.scale = Vector2(0.22, 0.22)
 			event_sprite.visible = true
 
 func _rebuild_map() -> void:
@@ -308,18 +315,26 @@ func _rebuild_map() -> void:
 		_add_map_node(node)
 
 func _add_map_node(node: Dictionary) -> void:
-	var button := TextureButton.new()
+	var button := Button.new()
 	var icon_key := _map_icon_key(node)
-	button.texture_normal = _atlas(map_icon_texture, MAP_ICON_REGIONS[icon_key])
-	button.texture_hover = button.texture_normal
-	button.texture_pressed = button.texture_normal
-	button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 	button.custom_minimum_size = Vector2(42, 42)
 	button.size = Vector2(42, 42)
 	button.position = _node_position(node) - Vector2(21, 21)
 	button.modulate = Color.WHITE if bool(node.known) else Color(0.45, 0.45, 0.5, 0.75)
+	button.text = ""
+	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	if bool(node.resolved):
 		button.modulate = Color(0.52, 0.58, 0.62, 0.7)
+	var icon := TextureRect.new()
+	icon.texture = _atlas(map_icon_texture, MAP_ICON_REGIONS[icon_key])
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	button.add_child(icon)
 	var node_id := int(node.id)
 	button.button_down.connect(func() -> void:
 		button.set_meta("down_at", Time.get_ticks_msec())
@@ -390,9 +405,6 @@ func _add_map_choice_buttons() -> void:
 	if nodes.is_empty():
 		_add_disabled_status("この階層は踏破済み")
 		return
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 7)
-	action_box.add_child(row)
 	for node in nodes:
 		var button := _make_button(game.describe_node(node, false).replace("\n", " "))
 		var node_id := int(node.id)
@@ -407,15 +419,12 @@ func _add_map_choice_buttons() -> void:
 				game.move_to_node(node_id)
 			_refresh_all()
 		)
-		row.add_child(button)
+		action_box.add_child(button)
 
 func _add_battle_actions() -> void:
 	var enemy_hp := int(game.current_enemy.hp)
 	var max_hp := int(game.current_enemy.max_hp)
 	_add_disabled_status("%s HP %d/%d" % [game.current_enemy.name, enemy_hp, max_hp])
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 7)
-	action_box.add_child(row)
 	var attack_button := _make_button("攻撃")
 	attack_button.pressed.connect(func() -> void:
 		game.attack()
@@ -430,7 +439,7 @@ func _add_battle_actions() -> void:
 			game.charge_attack()
 			_refresh_all()
 	)
-	row.add_child(attack_button)
+	action_box.add_child(attack_button)
 	for skill_id in ["power_strike", "guard", "first_aid"]:
 		var skill := Skills.get_skill(skill_id)
 		var cooldown := int(game.skill_cooldowns.get(skill_id, 0))
@@ -439,13 +448,10 @@ func _add_battle_actions() -> void:
 			game.use_skill(skill_id)
 			_refresh_all()
 		)
-		row.add_child(skill_button)
+		action_box.add_child(skill_button)
 	_add_item_row()
 
 func _add_item_row() -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 7)
-	action_box.add_child(row)
 	for item_id in ["potion", "smoke_bomb", "antidote", "bomb"]:
 		var amount := int(game.inventory.items.get(item_id, 0))
 		var button := _make_button("%s x%d" % [Items.get_item(item_id).name, amount])
@@ -454,7 +460,7 @@ func _add_item_row() -> void:
 			game.use_item(item_id)
 			_refresh_all()
 		)
-		row.add_child(button)
+		action_box.add_child(button)
 
 func _add_reward_actions() -> void:
 	for i in game.reward_options.size():
@@ -495,9 +501,9 @@ func _update_walk_animation(delta: float) -> void:
 			floor_scroll_a.position.y = -170.0
 		if floor_scroll_b.position.y > 170.0:
 			floor_scroll_b.position.y = -170.0
-		hero_sprite.position.y = 653.0 + sin(Time.get_ticks_msec() / 86.0) * 6.0
+		hero_sprite.position.y = 592.0 + sin(Time.get_ticks_msec() / 86.0) * 5.0
 	else:
-		hero_sprite.position.y = lerpf(hero_sprite.position.y, 653.0, 0.2)
+		hero_sprite.position.y = lerpf(hero_sprite.position.y, 592.0, 0.2)
 	var flicker := 1.0 + sin(Time.get_ticks_msec() / 75.0) * 0.06
 	torch_left.scale = Vector2(0.34 * flicker, 0.34 * flicker)
 	torch_right.scale = Vector2(-0.34 * flicker, 0.34 * flicker)
@@ -523,6 +529,17 @@ func _make_object_sprite(region_key: String, position_value: Vector2, scale_valu
 	sprite.position = position_value
 	sprite.scale = Vector2(scale_value, scale_value)
 	return sprite
+
+func _object_display_scale(region_key: String) -> Vector2:
+	match region_key:
+		"coin", "heart":
+			return Vector2(0.28, 0.28)
+		"torch":
+			return Vector2(0.3, 0.3)
+		"chest", "trap", "fountain", "stairs":
+			return Vector2(0.34, 0.34)
+		_:
+			return Vector2(0.3, 0.3)
 
 func _make_button(text_value: String) -> Button:
 	var button := Button.new()

@@ -58,7 +58,7 @@ static func get_relic(relic_id: String) -> Dictionary:
 	relic["id"] = relic_id
 	return relic
 
-static func roll_options(owned: Array[String], rng: RandomNumberGenerator, count: int = 3) -> Array[Dictionary]:
+static func roll_options(owned: Array, rng: RandomNumberGenerator, count: int = 3) -> Array[Dictionary]:
 	var ids: Array = RELICS.keys()
 	var available: Array[String] = []
 	for relic_id in ids:
